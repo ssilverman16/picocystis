@@ -1,0 +1,141 @@
+---
+title: "Picocystis microscopy"
+author: "Shaelyn N. Silverman"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Load libraries
+```{r}
+library(plyr)
+library(dplyr)
+library(tidyverse)
+library("readxl")
+library(ggplot2)
+library(data.table)
+library(knitr)
+```
+
+### Load data
+```{r}
+metadata <- read_excel(file.path("..", "microscopy", "microscopy_data_all.xlsx"), sheet = "metadata")
+data <- read_excel(file.path("..", "microscopy", "microscopy_data_all.xlsx"), sheet = "cell_counts")
+```
+
+### Summarize data
+
+#### Individual data (per sample)
+```{r}
+data_summarized_indv_1 <- data %>% 
+  filter(depth == "8m") %>%
+  group_by(sample) %>% summarize_at(vars(n_small_singles, n_large_singles, n_minnies, n_mickeys, t_picos), list(sum = sum)) %>% 
+  mutate(small_singles = 100 * n_small_singles_sum / t_picos_sum,
+         large_singles = 100 * n_large_singles_sum / t_picos_sum,
+         minnies = 100 * n_minnies_sum / t_picos_sum,
+         mickeys = 100 * n_mickeys_sum / t_picos_sum) %>%
+  gather(small_singles, large_singles, minnies, mickeys, key = "cell_type", value = "percent") 
+
+data_summarized_indv_2 <- data_summarized_indv_1 %>% select(-c(cell_type, percent)) %>%
+  setnames(old = c("n_small_singles_sum", "n_large_singles_sum", "n_minnies_sum", "n_mickeys_sum", "t_picos_sum"), new = c("small_singles", "large_singles", "minnies", "mickeys", "total")) %>%
+  gather(small_singles, large_singles, minnies, mickeys, key = "cell_type", value = "sum") 
+
+data_summarized_indv <- data_summarized_indv_1 %>% 
+  select(-c(n_small_singles_sum, n_large_singles_sum, n_minnies_sum, n_mickeys_sum, t_picos_sum)) %>%
+  left_join(data_summarized_indv_2, by = c("sample", "cell_type")) %>% 
+  unique()
+
+rm(data_summarized_indv_1, data_summarized_indv_2)
+```
+
+```{r}
+# Plot: number of cells counted
+data_summarized_indv %>%
+  select(sample, total) %>%
+  unique() %>%
+  ggplot(aes(x = factor(sample, level = c("1A", "1B", "2A", "2B", "3A", "3B", "4A", "4B", "5A", "5B", "6A", "6B", "7A", "7B", "8A", "8B", "9A", "9B", "10B", "11A", "11B", "12A", "12B")), y = total)) +
+  geom_col() +
+  scale_fill_manual(values = c("#FFE893", "#DD9A1C", "#186F7A", "#08005D")) +
+  geom_hline(yintercept = 0) +
+  labs(x = "sample", y = "# cells counted") +
+  theme_classic()
+
+#ggsave(file.path("..", "plots", "microscopy_barplot_indv_n.pdf"))
+```
+
+
+
+```{r}
+# Plot: percent of different morphologies
+data_summarized_indv %>%
+  ggplot(aes(x = factor(sample, level = c("1A", "1B", "2A", "2B", "3A", "3B", "4A", "4B", "5A", "5B", "6A", "6B", "7A", "7B", "8A", "8B", "9A", "9B", "10B", "11A", "11B", "12A", "12B")), y = percent, fill = cell_type)) +
+  geom_col() +
+  scale_fill_manual(values = c("#FFE893", "#DD9A1C", "#186F7A", "#08005D")) +
+  geom_hline(yintercept = 0) +
+  labs(x = "sample") +
+  theme_classic()
+
+#ggsave(file.path("..", "plots", "microscopy_barplot_indv.pdf"))
+```
+
+#### Data collated by condition
+```{r}
+data_summarized_coll_1 <- data %>% 
+  filter(depth == "8m") %>%
+  mutate(sample_2 = sample) %>%
+  separate(sample_2, into = c("sample_num", "replicate"), sep = -1) %>%
+  select(-c(replicate, notes)) %>%
+  group_by(sample_num) %>% summarize_at(vars(n_small_singles, n_large_singles, n_minnies, n_mickeys, t_picos), list(sum = sum)) %>% 
+  mutate(small_singles = 100 * n_small_singles_sum / t_picos_sum,
+         large_singles = 100 * n_large_singles_sum / t_picos_sum,
+         minnies = 100 * n_minnies_sum / t_picos_sum,
+         mickeys = 100 * n_mickeys_sum / t_picos_sum) %>%
+  gather(small_singles, large_singles, minnies, mickeys, key = "cell_type", value = "percent") 
+
+data_summarized_coll_2 <- data_summarized_coll_1 %>% select(-c(cell_type, percent)) %>%
+  setnames(old = c("n_small_singles_sum", "n_large_singles_sum", "n_minnies_sum", "n_mickeys_sum", "t_picos_sum"), new = c("small_singles", "large_singles", "minnies", "mickeys", "total")) %>%
+  gather(small_singles, large_singles, minnies, mickeys, key = "cell_type", value = "sum") 
+
+data_summarized_coll <- data_summarized_coll_1 %>% 
+  select(-c(n_small_singles_sum, n_large_singles_sum, n_minnies_sum, n_mickeys_sum, t_picos_sum)) %>%
+  left_join(data_summarized_coll_2, by = c("sample_num", "cell_type")) %>% 
+  unique()
+
+rm(data_summarized_coll_1, data_summarized_coll_2)
+```
+
+```{r}
+# Plot: number of cells counted
+data_summarized_coll %>%
+  select(sample_num, total) %>%
+  unique() %>%
+  ggplot(aes(x = factor(sample_num, level = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12")), y = total)) +
+  geom_col() +
+  scale_fill_manual(values = c("#FFE893", "#DD9A1C", "#186F7A", "#08005D")) +
+  geom_hline(yintercept = 0) +
+  labs(x = "sample", y = "# cells counted") +
+  theme_classic()
+
+#ggsave(file.path("..", "plots", "microscopy_barplot_coll_n.pdf"))
+```
+
+
+```{r}
+# Plot: percent of different morphologies
+data_summarized_coll %>%
+  ggplot(aes(x = factor(sample_num, level = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12")), y = percent, fill = cell_type)) +
+  geom_col() +
+  scale_fill_manual(values = c("#FFE893", "#DD9A1C", "#186F7A", "#08005D")) +
+  geom_hline(yintercept = 0) +
+  labs(x = "Sample", y = "Percent abundance") +
+  theme_classic() +
+  theme(
+    axis.text = element_text(size = rel(1.1)),
+    axis.title = element_text(size = rel(1.3))
+  )
+
+#ggsave(file.path("..", "plots", "microscopy_barplot_coll_p.pdf"))
+```
+
