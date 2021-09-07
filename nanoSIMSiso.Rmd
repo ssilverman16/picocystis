@@ -84,11 +84,22 @@ roi_tbl$gen_d[roi_tbl$gen_d < 0] <- 0
 roi_tbl <- roi_tbl %>% drop_na(mu_d)
 
 # Calculate mean turnover and gentimes
-roi_tbl <- roi_tbl %>% group_by(N_source, light) %>% 
+roi_tbl <- roi_tbl %>% 
+  filter(cell_type != "Other") %>%
+  group_by(N_source, light) %>% 
   mutate(median_mu_d = median(mu_d),
          median_gen_d = median(gen_d))
 
-write_tsv(roi_tbl, "roi_tbl_gentimes.tsv")
+# Summarize data: median growth rate and generation times
+kable(roi_tbl_median_summary <- roi_tbl %>%
+  select(N_source, light, incubation_time_hr, median_mu_d, median_gen_d) %>% unique())
+
+# Number of cells counted per condition
+roi_tbl %>%
+  filter(cell_type != "Other") %>%
+  summarise(n = n())
+
+#write_tsv(roi_tbl, "roi_tbl_gentimes.tsv")
 ```
 
 
@@ -316,7 +327,7 @@ p_NH4_active_raincloud <- roi_tbl_active %>% filter(N_source == "NH4", cell_type
         axis.title.y = element_blank(),
         axis.ticks.y = element_blank(),
         axis.text.y = element_blank())
-ggsave(p_NH4_active_raincloud, filename = "NH4_active_raincloud.png", height = 3, width = 4)
+#ggsave(p_NH4_active_raincloud, filename = "NH4_active_raincloud.png", height = 3, width = 4)
 ```
 
 ```{r}
@@ -411,7 +422,7 @@ p_nh4_no3 <- roi_tbl_active %>% filter(N_source %in% c("NH4", "no3"),
   labs(x = "15N / 14N")
 p_nh4_no3
 
-ggsave("nh4LvD.png", p_nh4_no3, width = 4, height = 5, dpi = 300)
+#ggsave("nh4LvD.png", p_nh4_no3, width = 4, height = 5, dpi = 300)
 ```
 
 
@@ -452,7 +463,7 @@ p_DON_active_raincloud <- roi_tbl_active %>%
         axis.ticks.y = element_blank(),
         axis.text.y = element_blank())
 p_DON_active_raincloud
-ggsave(p_DON_active_raincloud, filename = "p_DON_active_raincloud.png", height = 5, width = 5)
+#ggsave(p_DON_active_raincloud, filename = "p_DON_active_raincloud.png", height = 5, width = 5)
 ```
 
 ```{r}
@@ -460,8 +471,8 @@ median_gen_mu_d <- roi_tbl %>%
   group_by(N_source, light) %>% 
   summarize(med_gen_d = median(gen_d),
             med_mu_d = median(mu_d),
-            mean_gen_d = mean(gen_d)) %>% 
-  write_tsv(file = "median_gen_mu_d.tsv")
+            mean_gen_d = mean(gen_d))  
+  #write_tsv(file = "median_gen_mu_d.tsv")
 
 ```
 
